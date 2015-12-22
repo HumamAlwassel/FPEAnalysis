@@ -1,0 +1,4 @@
+(* example_4: a stable rewrite of example_3 *)
+{x: 1e-9}
+{}
+(exp(x) - 1) / log(exp(x))

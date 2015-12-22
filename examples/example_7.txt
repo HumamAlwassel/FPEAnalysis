@@ -1,0 +1,4 @@
+(* example_7: quadratic formula *)
+{a: 1, b: [100.3, 150.42], c: [10e-4, 10e-2]}
+{b*b-4*a*c: [0, inf]}
+(-b + sqrt(b * b - 4 * a * c)) / (2 * a)

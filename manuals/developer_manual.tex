@@ -1,0 +1,102 @@
+\documentclass{article}
+\usepackage{outline}
+\usepackage[margin=1.0in]{geometry}
+
+\usepackage{amsmath, amsthm, amssymb}
+\usepackage{fancyhdr}
+\usepackage{enumerate}
+\usepackage{graphicx}
+\usepackage{tabularx}
+\usepackage[table]{xcolor}% http://ctan.org/pkg/xcolor
+\usepackage{multirow}
+\usepackage{tikz}
+\usepackage{semantic}
+\usetikzlibrary{arrows}
+\usepackage{adjustbox}
+\usepackage{indentfirst}
+\usepackage{bm}
+\usepackage{caption}
+\usepackage{hyperref} 
+
+% fancy header %
+\pagestyle{fancy}
+\lhead{FPEAnalysis System: Developer's Manual}
+\rhead{Revision 1}
+
+\definecolor{ashgrey}{rgb}{0.7, 0.75, 0.71}
+
+\begin{document}
+
+\newcolumntype{C}[1]{>{\centering\arraybackslash}p{#1}}
+\newcommand{\horrule}[1]{\rule{\linewidth}{#1}} % Create horizontal rule command with 1 argument of height
+
+\title{ 
+\normalfont \normalsize 
+\horrule{0.5pt} \\[0.4cm] % Thin top horizontal rule
+\huge FPEAnalysis System: Developer's Manual\\
+\vspace{0.5cm}
+\normalfont \normalsize An Independent Reading and Research Project (Fall 2015)\\under Professor David Bindel (bindel@cs.cornell.edu)\\Cornell University % The assignment title
+\horrule{2pt} \\[0.5cm] % Thick bottom horizontal rule
+}
+\author{Humam A Alwassel (haa54@cornell.edu)} % Your name
+\date{\normalsize Revision 1, updated \today} % Today's date or a custom date
+
+\maketitle
+
+This document is the developer's manual for FPEAnanlysis system. It explains the main ideas and techniques that the system uses. This document is technical in nature and is aimed towards developers with a sufficient computer science background, specifically in numerical analysis. Please read the ``User's Manual'' first before reading this document.
+
+\section{Source Code Files}
+The system source code files are:
+\begin{itemize}
+	\item $\bf{analysis.ml}$: a library for computing error estimates to analyzing stability of expressions  
+	\item $\bf{ast.ml}$: type definitions for the abstract syntax tree and the data structures used by FPEAnalysis
+	\item $\bf{augment.ml}$: a library for augmenting expression with (1+ $\delta$)'s  
+	\item $\bf{deriv.ml}$: a library for computing partial derivatives of expressions
+	\item $\bf{eval.ml}$: a library for evaluating expressions using interval arithmetics 
+	\item $\bf{FPEAnalysis.ml}$: the main system program
+	\item $\bf{lexer.mll}$: the lexer for the input files
+	\item $\bf{parser.mly}$: the parser for the input files
+	\item $\bf{pprint.ml}$: a pretty print library for data types used by the system
+	\item $\bf{util.ml}$: a utility library with functions used across the system, such as functions for simplifying expressions and interval 
+\end{itemize}
+
+\section{The (1+$\delta$) Model}
+Suppose that $expr$ is an arbitrary arithmetic expression with an exact value $v$. Let fl($expr$) be the correctly rounded floating point representation of $expr$'s value. The (1+$\delta$) model states that fl($expr$) = $(1 + \delta)*v$, where $|\delta| < \epsilon_{mach}$. This means that the absolute and relative floating point errors are $\delta*v$ and $1+\delta$, respectively. This is a linear model for estimating the floating point error.
+
+\section{Interval Arithmetics}
+Read about the subject on \href{https://en.wikipedia.org/wiki/Interval_arithmetic}{https://en.wikipedia.org/wiki/Interval$\_$arithmetic}
+
+\section{How FPEAnalysis Works?}
+FPEAnalysis takes the following main steps to produce its final analysis report:
+\begin{enumerate}
+	\item Parse the input file and divide it into a $(bindings, conditions, body)$ tuple, where 
+	\begin{itemize}
+		\item $bindings$ is the list of $(var, val)$ pairs from the first curly braces list
+		\item $conditions$ is the list of $(subexpr, val)$ pairs from the second curly braces list
+		\item $body$ is the program body converted to an $Ast.aexp$ type
+	\end{itemize}
+	
+	\item Convert the lists $bindings$ and $conditions$ to an $Ast.BindingMap$ and an $Ast.ConditionMap$ maps, respectively (call these maps $bind\_map$ and $cond\_map$, respectively) 
+
+	\item Augment $body$ and each of its subexpressions with ($1 + \delta$)'s. Augment each subexpression with a different $\delta$ variable (use $\delta_0, \delta_1, \delta_2, ...$) with the following exceptions:
+	\begin{itemize}
+		\item Augment expressions that are equivalent with the same $\delta$ because equivalent expressions should have the same error. For example, the two expressions $(a + b)$ and $(b + a)$ are equivalent and should have the same $\delta$ (see the $Ast.expCompare$ compare function for the equivalence rules)
+		\item Do not augment a subexpression $(a - b)$ if $a$ and $b$ are within a factor of 2 from each other (use the $bind\_map$ to decide this). There is no floating point error in such cases and the computation is exact
+	\end{itemize}
+	Store each subexpression and it augmented version in an $Ast.Input2AugmentedMap$ map (call it $in2aug\_map$)
+	
+	\item Take the partial derivatives of each augmented subexpression with respect to each $\delta$. Linearize each partial derivative about $\delta = 0$. Store the results in an $Ast.Augmented2DerivMap$ map (call it $aug2deriv\_map$)
+
+	\item Compute the worst absolute and relative errors for each subexpression. Let $eval(expr)$ donates the interval value of $expr$ under the variable bindings in $bind\_map$ and after applying any applicable conditions from $cond\_map$. The worst absolute error is
+	\[
+	w\_abs\_err = \max \left(\sum_i eval\left(\left[\frac{\partial\ expr}{\partial\ \delta_i}\right]_{linearized}\right)\right) * \epsilon_{mach}.
+	\]
+	The worst relative error is 
+	\[
+	w\_rel\_err = \frac{w\_abs\_err}{\min (eval(expr))}.
+	\]
+
+	\item Process the computed worst relative errors for each subexpression to find critical subexpressions. Consider an expression critical if it has a high relative error but its children subexpressions have low relative error. Compile the analysis report and return it to the user 
+\end{enumerate}
+
+\end{document}

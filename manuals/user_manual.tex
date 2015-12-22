@@ -1,0 +1,152 @@
+\documentclass{article}
+\usepackage{outline}
+\usepackage[margin=1.0in]{geometry}
+
+\usepackage{amsmath, amsthm, amssymb}
+\usepackage{fancyhdr}
+\usepackage{enumerate}
+\usepackage{graphicx}
+\usepackage{tabularx}
+\usepackage[table]{xcolor}% http://ctan.org/pkg/xcolor
+\usepackage{multirow}
+\usepackage{tikz}
+\usepackage{semantic}
+\usetikzlibrary{arrows}
+\usepackage{adjustbox}
+\usepackage{indentfirst}
+\usepackage{bm}
+\usepackage{caption}
+\usepackage{hyperref} 
+
+% fancy header %
+\pagestyle{fancy}
+\lhead{FPEAnalysis System: User's Manual}
+\rhead{Revision 1}
+
+\definecolor{ashgrey}{rgb}{0.7, 0.75, 0.71}
+
+\begin{document}
+
+\newcolumntype{C}[1]{>{\centering\arraybackslash}p{#1}}
+\newcommand{\horrule}[1]{\rule{\linewidth}{#1}} % Create horizontal rule command with 1 argument of height
+
+\title{ 
+\normalfont \normalsize 
+\horrule{0.5pt} \\[0.4cm] % Thin top horizontal rule
+\huge FPEAnalysis System: User's Manual\\
+\vspace{0.5cm}
+\normalfont \normalsize An Independent Reading and Research Project (Fall 2015)\\under Professor David Bindel (bindel@cs.cornell.edu)\\Cornell University % The assignment title
+\horrule{2pt} \\[0.5cm] % Thick bottom horizontal rule
+}
+\author{Humam A Alwassel (haa54@cornell.edu)} % Your name
+\date{\normalsize Revision 1, updated \today} % Today's date or a custom date
+
+\maketitle
+
+This document is the user's manual for FPEAnanlysis system. It explains how to install and run FPEAnalysis, details the syntax for input files, and shows how to interpret the analysis report. This document is non-technical in nature and is aimed toward readers with an introductory computer science background. Please refer to the ``Developer's Manual'' if you want to understand how FPEAnalysis works or wish to develop the system further. 
+
+\section{What is FPEAnalysis System?}
+Floating point error analysis of simple expressions is a standard topic in introductory scientific computing courses. Unfortunately, such analyses can be tedious and error prone. $\bf{FPEAnalysis}$ ($\bf{F}$loating $\bf{P}$oint $\bf{E}$rror $\bf{Analysis}$) is a system that automates this analysis process using the (1 + $\delta$) model. FPEAnalysis takes in a program and values ranges for each of its variables. The system identifies and reports any critical subexpressions that result in a high relative error in the output. Users can use FPEAnalysis to identify numerical instabilities in their program, and make the necessary rewrites to avoid such instabilities.
+
+
+\section{Installation and Usage}
+The source code is written in OCaml. You need OCaml version 4.02.1 or higher installed on your machine. Code is available on GitHub on \href{https://github.com/HumamAlwassel/FPEAnalysis}{https://github.com/HumamAlwassel/FPEAnalysis}. To install FPEAnalysis, make sure you have git installed on your machine, and then run the following commands in your terminal:
+
+\begin{verbatim}
+$ git clone git@github.com:HumamAlwassel/FPEAnalysis.git 
+$ cd FPEAnalysis/src/
+$ make
+\end{verbatim}
+To run the system on an input file, use
+\begin{verbatim}
+$ ./FPEAnalysis <filename>
+\end{verbatim}
+Use the option [-v] to run the system in verbose mode,
+\begin{verbatim}
+$ ./FPEAnalysis -v <filename>
+\end{verbatim}
+
+\clearpage
+\section{Input File Syntax}
+The syntax for the input files to FPEAnalysis is 
+
+\begin{verbatim}
+(* comment comment. *)
+{var1: val1, var2: val2, ... }
+{subexpr1: val1, subexpr2: val2, ...}
+program body 
+\end{verbatim}
+
+\noindent where, 
+
+\begin{itemize}
+  \item Comments are specified inside $(*\ \ *)$
+  \item The list inside the first curly braces is for specifying the values (or value ranges) of each variable in the program body
+  \item The list inside the second curly braces is for specifying any conditions on the values of subexpressions in the program body
+  \item The program body can include expression with any of the following:
+	\begin{itemize}
+		\item Real numbers: in decimal or scientific notation (such as 1.42e-4)
+		\item Special numbers: ``machine$\_$epsilon'' and ``inf''
+		\item Variables: an array of alphanumeric characters and underscores, but must start with a letter
+		\item Arithmetic operations: addition ($+$), subtraction and negation ($-$), multiplication ($*$), and division ($/$)
+		\item Basic mathematical functions: square root ($sqrt$), natural log ($log$), exponentiation ($exp$), and trigonometric functions ($sin,\ cos,\ tan,$ and $cot$)
+	\end{itemize}
+\end{itemize}
+
+Supplying the conditions for subexpression is not necessary, and the second set of curly braces can be left empty. The conditions are only meant to help guide the error analysis system. If you know that the value of a subexpression must fall within some boundaries, then add it to the conditions list. The value of a variable or a conditioned subexpression can be either a real number or a $closed$ interval. The interval ends can include $\pm inf$ (use `[' and `]' to specify intervals even when using $\pm inf$).\\
+
+An example of an input file is  
+\begin{verbatim}
+(* quadratic formula *)
+{a: 1, b: [100.3, 150.42], c: [10e-4, 10e-2]}
+{b*b-4*a*c: [0, inf]}
+(-b + sqrt(b * b - 4 * a * c)) / (2 * a)
+\end{verbatim}
+
+\noindent See the directory \underline{FPEAnalysis/examples/} for more examples.
+
+\clearpage
+\section{Interpreting Output}
+FPEAnalysis outputs a report that gives the worst case relative error of the program body (with a warning if it's high), and a list of any critical subexpressions, if any. When FPEAnalysis is run in verbose mode, it returns detailed analysis report about each subexpression of the program body.\\
+
+Consider the two examples:
+\begin{verbatim}
+(* example 1: cancellation error example *)
+{x: [1e-10, 1e-8]}
+{}
+sqrt(1 + x) - sqrt(1 - x) + 42 * x
+\end{verbatim}
+and 
+\begin{verbatim}
+(* example 2: stable rewrite of example 1 *)
+{x: [1e-10, 1e-8]}
+{}
+(2 * x) / (sqrt(1 + x) + sqrt(1 - x)) + 42 * x
+\end{verbatim}
+
+The two examples are mathematically equivalent, but the first one is numerically instable for small values of $x$, while the second is stable under the same values of $x$. The output of example 1 is 
+\begin{verbatim}
+$ ./FPEAnalysis example1.txt
+
+Variables bindings: {x: [1e-10, 1e-08]}
+Conditions: {}
+Program Expression: ((sqrt((1 + x)) - sqrt((1 - x))) + (42 * x))
+************** ANALYSIS REPORT **************
+Worst case relative error = 1.54914884879e-07 [HIGH RELATIVE ERROR]
+1 critical subexpression was found. Consider rewriting the following:
+  (sqrt((1 + x)) - sqrt((1 - x)))
+\end{verbatim}
+
+\noindent The output of example 2 is 
+\begin{verbatim}
+$ ./FPEAnalysis example2.txt
+
+Variables bindings: {x: [1e-10, 1e-08]}
+Conditions: {}
+Program Expression: (((2 * x) / (sqrt((1 + x)) + sqrt((1 - x)))) + (42 * x))
+************** ANALYSIS REPORT **************
+Worst case relative error = 4.62162608124e-14
+No critical subexpressions were found
+\end{verbatim}
+ 
+\end{document}

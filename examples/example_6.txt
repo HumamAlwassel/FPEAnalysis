@@ -1,0 +1,4 @@
+(* example_6: a stable rewrite of example_5 *)
+{x: 1e9}
+{}
+-log(x +  sqrt(x*x - 1))

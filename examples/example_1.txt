@@ -1,0 +1,4 @@
+(* example_1 : cancellation error example *)
+{x: [1e-10, 1e-8]}
+{}
+sqrt(1 + x) - sqrt(1 - x)

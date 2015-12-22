@@ -1,0 +1,4 @@
+(* example_3: output loses most digits for small x values *)
+{x: 1e-9}
+{}
+(exp(x) - 1) / x

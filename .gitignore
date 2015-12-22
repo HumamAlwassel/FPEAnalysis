@@ -18,3 +18,15 @@ _build/
 # oasis generated files
 setup.data
 setup.log
+
+src/FPEAnalysis
+src/lexer.ml
+src/parser.automaton
+src/parser.ml
+src/parser.mli
+
+# tex files
+manuals/*.aux
+manuals/*.out
+manuals/*.log
+manuals/*.synctex*

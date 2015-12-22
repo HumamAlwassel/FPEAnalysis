@@ -1,0 +1,4 @@
+(* example_5: cancellation error for large x values *)
+{x: 1e9}
+{x -  sqrt(x*x - 1): [0, inf]}
+log(x -  sqrt(x*x - 1))

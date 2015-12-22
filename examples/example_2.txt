@@ -1,0 +1,4 @@
+(* example_2: a stable rewrite of example_1 *)
+{x: [1e-10, 1e-8]}
+{}
+(2 * x) / (sqrt(1 + x) + sqrt(1 - x))
